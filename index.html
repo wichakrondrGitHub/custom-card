@@ -1,0 +1,1176 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>5T TCG — Number Card Generator & PDF Exporter</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts: Inter (800 ExtraBold), Roboto, Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@600;700;800;900&family=Montserrat:wght@700;800;900&family=Noto+Sans+Thai:wght@400;500;600;700&family=Roboto:wght@700;900&display=swap" rel="stylesheet">
+  <!-- jsPDF for direct client-side high-DPI PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <style>
+    body {
+      font-family: 'Noto Sans Thai', 'Inter', sans-serif;
+      background-color: #09090b;
+      color: #f4f4f5;
+    }
+    /* Custom scrollbar for dark UI */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #18181b; }
+    ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+    /* Print Stylesheet */
+    @media print {
+      body { background: #ffffff !important; margin: 0 !important; padding: 0 !important; }
+      .no-print { display: none !important; }
+      #print-area { display: block !important; }
+      .print-page {
+        page-break-after: always;
+        break-after: page;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-content: center;
+        margin: 0 auto;
+        background: #ffffff;
+      }
+      .print-page:last-child {
+        page-break-after: auto;
+        break-after: auto;
+      }
+      .print-card-img {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-amber-500/30 selection:text-amber-200">
+
+  <!-- Top Navigation Bar -->
+  <header class="no-print sticky top-0 z-30 border-b border-zinc-800/80 bg-zinc-950/90 backdrop-blur-md px-4 py-3">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 via-purple-600 to-zinc-900 p-[1.5px] shadow-lg shadow-purple-500/20">
+          <div class="w-full h-full bg-zinc-950 rounded-[10px] flex items-center justify-center font-black italic text-sm">
+            <span class="text-amber-400">5</span><span class="text-purple-400">T</span>
+          </div>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            5T TCG Card Number Studio
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30">PRO PDF</span>
+          </h1>
+          <p class="text-xs text-zinc-400">ออกแบบพื้นหลัง • รันเลขอัตโนมัติ 001–500 / กำหนดเอง • ส่งออก PDF ขนาด 63×88 มม.</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5">
+        <button id="btn-download-template" class="px-3 py-2 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 transition flex items-center gap-1.5" title="ดาวน์โหลดภาพพื้นหลังเปล่า (ไม่มีตัวเลข)">
+          <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          <span class="hidden sm:inline">โหลดพื้นหลังเปล่า (PNG)</span>
+        </button>
+
+        <button id="btn-print" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white border border-zinc-700 transition flex items-center gap-1.5">
+          <svg class="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+          <span>สั่งพิมพ์ (Print)</span>
+        </button>
+
+        <button id="btn-export-pdf" class="px-4 py-2 rounded-xl text-xs sm:text-sm font-bold bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-zinc-950 shadow-lg shadow-amber-500/25 transition flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>Export PDF (<span id="badge-total-cards">500</span> ใบ)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="no-print flex-1 max-w-7xl w-full mx-auto p-4 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- Left Controls Panel (7 columns on lg) -->
+    <div class="lg:col-span-7 space-y-4">
+
+      <!-- Section 1: Number Generation Mode -->
+      <section class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center text-xs font-bold">1</span>
+            <h2 class="font-bold text-sm sm:text-base text-white">โหมดสร้างชุดตัวเลข (Number Generator)</h2>
+          </div>
+          <div class="inline-flex rounded-xl bg-zinc-950 p-1 border border-zinc-800">
+            <button type="button" id="tab-range" class="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-amber-400 shadow transition">รันเลขอัตโนมัติ (Range)</button>
+            <button type="button" id="tab-custom" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition">ใส่เลขเอง / รายการ (Custom)</button>
+          </div>
+        </div>
+
+        <!-- Range Mode Inputs -->
+        <div id="panel-range" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">เลขเริ่มต้น (Start)</label>
+            <input type="number" id="input-start" value="1" min="0" max="99999" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">เลขสิ้นสุด (End)</label>
+            <input type="number" id="input-end" value="500" min="0" max="99999" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-amber-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">จำนวนหลัก (Zero Pad)</label>
+            <select id="input-pad" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-amber-500 focus:outline-none">
+              <option value="1">1 หลัก (1, 2, 85)</option>
+              <option value="2">2 หลัก (01, 02, 85)</option>
+              <option value="3" selected>3 หลัก (001 - 500)</option>
+              <option value="4">4 หลัก (0001 - 0500)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">คำนำหน้า (Prefix - ถ้ามี)</label>
+            <input type="text" id="input-prefix" placeholder="เช่น # หรือ A-" maxlength="6" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-amber-500 focus:outline-none">
+          </div>
+        </div>
+
+        <!-- Custom List Mode Inputs -->
+        <div id="panel-custom" class="hidden space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs text-zinc-400">ระบุหมายเลขหรือข้อความ (คั่นด้วยลูกน้ำ `,` หรือขึ้นบรรทัดใหม่ หรือพิมพ์ช่วงเช่น `001-010`)</label>
+            <button type="button" id="btn-sample-custom" class="text-[11px] text-amber-400 hover:underline">ใส่ตัวอย่าง</button>
+          </div>
+          <textarea id="input-custom-list" rows="3" placeholder="001, 008, 085, 099, 100-105, VIP-01" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-mono focus:border-amber-500 focus:outline-none">001, 008, 085, 099, 100-105, VIP-01</textarea>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-400">
+          <span>จำนวนการ์ดที่จะสร้างทั้งหมด: <strong id="summary-count" class="text-amber-400 text-sm">500</strong> ใบ</span>
+          <span>ตัวอย่างลำดับ: <code id="summary-sample" class="text-zinc-200 bg-zinc-950 px-2 py-0.5 rounded-md border border-zinc-800">001, 002, 003 ... 500</code></span>
+        </div>
+      </section>
+
+      <!-- Section 2: Card Size & PDF Print Layout -->
+      <section class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center text-xs font-bold">2</span>
+            <h2 class="font-bold text-sm sm:text-base text-white">ขนาดการ์ด & การจัดหน้า PDF (Dimensions & Layout)</h2>
+          </div>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" data-w="63" data-h="88" class="preset-size px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-purple-600/20 text-purple-300 border border-purple-500/40 hover:bg-purple-600/30 transition">มาตรฐาน TCG (63×88 มม.)</button>
+            <button type="button" data-w="59" data-h="86" class="preset-size px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-zinc-800 text-zinc-300 border border-zinc-700 hover:bg-zinc-700 transition">Mini / YGO (59×86 มม.)</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">ความกว้างการ์ด (มม.)</label>
+            <input type="number" id="input-width" value="63" min="20" max="210" step="0.5" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-purple-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">ความสูงการ์ด (มม.)</label>
+            <input type="number" id="input-height" value="88" min="20" max="297" step="0.5" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-purple-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">รูปแบบหน้ากระดาษ PDF</label>
+            <select id="input-page-format" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-purple-500 focus:outline-none">
+              <option value="a4" selected>A4 (จัดเรียง 9 ใบ/หน้า)</option>
+              <option value="letter">Letter (จัดเรียง 9 ใบ/หน้า)</option>
+              <option value="single">1 ใบต่อ 1 หน้า (ขนาดจริงตามการ์ด)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">ช่องไฟระหว่างการ์ด (มม.)</label>
+            <input type="number" id="input-gap" value="2" min="0" max="15" step="0.5" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-purple-500 focus:outline-none">
+          </div>
+        </div>
+
+        <div class="mt-3 pt-3 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <label class="inline-flex items-center gap-2 cursor-pointer text-zinc-300">
+            <input type="checkbox" id="input-crop-marks" checked class="w-4 h-4 rounded accent-amber-500">
+            <span>แสดงเส้นประ / มาร์คสำหรับตัดขอบ (Cut Guides)</span>
+          </label>
+          <span id="layout-info" class="text-zinc-400">จัดเรียง 3×3 (9 ใบ/หน้า) • รวม 56 หน้า A4</span>
+        </div>
+      </section>
+
+      <!-- Section 3: Background Artwork & Typography Fine-Tuning -->
+      <section class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-xs font-bold">3</span>
+            <h2 class="font-bold text-sm sm:text-base text-white">พื้นหลัง & ปรับแต่งฟอนต์ตัวเลข (Artwork & Font)</h2>
+          </div>
+
+          <!-- Upload Custom Background -->
+          <div class="flex items-center gap-2">
+            <label class="cursor-pointer px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <span>อัปโหลดพื้นหลังเอง</span>
+              <input type="file" id="input-bg-upload" accept="image/*" class="hidden">
+            </label>
+            <button type="button" id="btn-reset-bg" class="hidden px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-500/15 text-red-300 border border-red-500/30 hover:bg-red-500/25 transition">ใช้พื้นหลัง 5T TCG เดิม</button>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+          <div>
+            <label class="block text-xs text-zinc-400 mb-1">ฟอนต์ตัวเลข (Font Family)</label>
+            <select id="input-font" class="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 text-white text-sm font-semibold focus:border-emerald-500 focus:outline-none">
+              <option value="Inter" selected>Inter ExtraBold (800) — ต้นฉบับ</option>
+              <option value="Roboto">Roboto Black (900)</option>
+              <option value="Montserrat">Montserrat ExtraBold (800)</option>
+              <option value="Arial Black">Arial Black</option>
+            </select>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs text-zinc-400 mb-1">
+              <span>ขนาดตัวเลข (Font Size)</span>
+              <span id="val-font-size" class="text-white font-semibold">100%</span>
+            </div>
+            <input type="range" id="input-font-size" min="50" max="140" value="100" class="w-full accent-amber-500 mt-1.5">
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs text-zinc-400 mb-1">
+              <span>ระยะห่างตัวอักษร (Tracking)</span>
+              <span id="val-letter-spacing" class="text-white font-semibold">2 px</span>
+            </div>
+            <input type="range" id="input-letter-spacing" min="-5" max="20" value="2" class="w-full accent-amber-500 mt-1.5">
+          </div>
+        </div>
+
+        <!-- White Number Window & Fine Tuning Controls -->
+        <div class="bg-zinc-950/70 border border-zinc-800/90 rounded-xl p-3 space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <label class="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-zinc-200">
+              <input type="checkbox" id="input-show-box" checked class="w-4 h-4 rounded accent-amber-500">
+              <span>แสดงกล่องสี่เหลี่ยมสีขาวรองรับตัวเลข (ปิดได้หากภาพที่อัปโหลดมีช่องขาวอยู่แล้ว)</span>
+            </label>
+            <button type="button" id="btn-reset-pos" class="text-[11px] text-zinc-400 hover:text-amber-400 underline">รีเซ็ตตำแหน่ง</button>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div>
+              <div class="flex justify-between text-zinc-400 mb-1">
+                <span>ตำแหน่งแนวตั้ง (Y)</span>
+                <span id="val-box-y" class="text-zinc-200">38%</span>
+              </div>
+              <input type="range" id="input-box-y" min="15" max="75" value="38" class="w-full accent-purple-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-zinc-400 mb-1">
+                <span>ความกว้างกล่อง</span>
+                <span id="val-box-w" class="text-zinc-200">83%</span>
+              </div>
+              <input type="range" id="input-box-w" min="40" max="95" value="83" class="w-full accent-purple-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-zinc-400 mb-1">
+                <span>ความสูงกล่อง</span>
+                <span id="val-box-h" class="text-zinc-200">34%</span>
+              </div>
+              <input type="range" id="input-box-h" min="15" max="55" value="34" class="w-full accent-purple-500">
+            </div>
+            <div>
+              <div class="flex justify-between text-zinc-400 mb-1">
+                <span>สีตัวเลข</span>
+                <span id="val-text-color" class="text-zinc-200">#09090B</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <input type="color" id="input-text-color" value="#09090b" class="w-8 h-6 rounded bg-transparent border-0 cursor-pointer">
+                <span class="text-[11px] text-zinc-400">คลิกเปลี่ยนสี</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Right Live Preview Panel (5 columns on lg) -->
+    <div class="lg:col-span-5 flex flex-col">
+      <div class="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl flex-1 flex flex-col justify-between sticky top-20">
+        <div>
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h2 class="font-bold text-sm sm:text-base text-white">ตัวอย่างการ์ดจริง (Live Preview)</h2>
+            </div>
+            <span id="preview-dim-badge" class="text-xs font-mono px-2.5 py-1 rounded-lg bg-zinc-950 text-amber-300 border border-zinc-800">63 × 88 mm</span>
+          </div>
+
+          <!-- Interactive Canvas Stage -->
+          <div class="relative rounded-2xl bg-[radial-gradient(#27272a_1px,transparent_1px)] [background-size:16px_16px] bg-zinc-950 border border-zinc-800/90 p-6 flex flex-col items-center justify-center min-h-[410px]">
+            <div class="relative group">
+              <!-- Outer Glow -->
+              <div class="absolute -inset-2 rounded-3xl bg-gradient-to-tr from-purple-600/25 via-amber-500/20 to-orange-500/25 blur-xl pointer-events-none"></div>
+              <canvas id="preview-canvas" class="relative rounded-[14px] shadow-2xl max-w-full h-auto" style="width: 265px;"></canvas>
+            </div>
+
+            <!-- Quick Preview Number Scrubber -->
+            <div class="mt-5 w-full max-w-xs flex items-center justify-between gap-2 bg-zinc-900/95 border border-zinc-800 px-3 py-2 rounded-xl">
+              <button type="button" id="btn-prev-card" class="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-300 transition" title="ใบก่อนหน้า">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/></svg>
+              </button>
+
+              <div class="flex items-center gap-2 text-xs">
+                <span class="text-zinc-400">ดูใบที่:</span>
+                <input type="number" id="input-preview-index" value="85" min="1" max="500" class="w-16 px-2 py-1 text-center rounded-lg bg-zinc-950 border border-zinc-700 text-amber-400 font-bold focus:outline-none">
+                <span class="text-zinc-500">/ <span id="preview-total-label">500</span></span>
+              </div>
+
+              <button type="button" id="btn-next-card" class="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-300 transition" title="ใบถัดไป">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Tips Footer -->
+        <div class="mt-4 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 leading-relaxed">
+          <strong>💡 คำแนะนำการพิมพ์:</strong> เมื่อกด <strong>Export PDF</strong> ระบบจะสร้างไฟล์ความละเอียดสูง (300 DPI) ตามขนาด <strong><span id="tip-dim">63 × 88</span> มม.</strong> เป๊ะ สามารถนำไปพิมพ์บนกระดาษอาร์ตการ์ด 300 แกรม และใส่ซองสลีฟการ์ดเกมได้พอดีครับ
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- PDF Export Progress Modal -->
+  <div id="export-modal" class="no-print fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-md w-full p-6 shadow-2xl text-center space-y-4">
+      <div class="w-12 h-12 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center justify-center mx-auto">
+        <svg class="w-6 h-6 animate-spin" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+      </div>
+      <div>
+        <h3 class="text-base font-bold text-white">กำลังสร้างไฟล์ PDF ความละเอียดสูง...</h3>
+        <p id="export-status-text" class="text-xs text-zinc-400 mt-1">กำลังเตรียมเรนเดอร์การ์ด 0 / 500 ใบ</p>
+      </div>
+      <div class="w-full h-2.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-800">
+        <div id="export-progress-bar" class="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-150" style="width: 0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Print Container -->
+  <div id="print-area" class="hidden"></div>
+
+  <script>
+    // =========================================================================
+    // Application State & Configuration
+    // =========================================================================
+    const state = {
+      mode: 'range', // 'range' | 'custom'
+      start: 1,
+      end: 500,
+      pad: 3,
+      prefix: '',
+      customRaw: '001, 008, 085, 099, 100-105, VIP-01',
+      cardWidthMm: 63,
+      cardHeightMm: 88,
+      pageFormat: 'a4', // 'a4' | 'letter' | 'single'
+      gapMm: 2,
+      cropMarks: true,
+      fontFamily: 'Inter',
+      fontSizePct: 100,
+      letterSpacing: 2,
+      showBox: true,
+      boxYPct: 38,
+      boxWPct: 83,
+      boxHPct: 34,
+      textColor: '#09090b',
+      customBgImage: null,
+      previewIndex: 84 // 0-based index (index 84 = '085' by default)
+    };
+
+    // High-res base resolution for rendering crisp 300 DPI cards
+    // 63mm at 300 DPI ≈ 744px, 88mm at 300 DPI ≈ 1039px
+    const BASE_DPI = 300;
+    const MM_TO_INCH = 1 / 25.4;
+
+    // Cache for the built-in background artwork layer so batch export is super fast
+    let cachedBgCanvas = null;
+    let cachedBgSignature = '';
+
+    // =========================================================================
+    // DOM References
+    // =========================================================================
+    const el = {
+      tabRange: document.getElementById('tab-range'),
+      tabCustom: document.getElementById('tab-custom'),
+      panelRange: document.getElementById('panel-range'),
+      panelCustom: document.getElementById('panel-custom'),
+      inputStart: document.getElementById('input-start'),
+      inputEnd: document.getElementById('input-end'),
+      inputPad: document.getElementById('input-pad'),
+      inputPrefix: document.getElementById('input-prefix'),
+      inputCustomList: document.getElementById('input-custom-list'),
+      btnSampleCustom: document.getElementById('btn-sample-custom'),
+      summaryCount: document.getElementById('summary-count'),
+      summarySample: document.getElementById('summary-sample'),
+      badgeTotalCards: document.getElementById('badge-total-cards'),
+
+      inputWidth: document.getElementById('input-width'),
+      inputHeight: document.getElementById('input-height'),
+      inputPageFormat: document.getElementById('input-page-format'),
+      inputGap: document.getElementById('input-gap'),
+      inputCropMarks: document.getElementById('input-crop-marks'),
+      layoutInfo: document.getElementById('layout-info'),
+
+      inputBgUpload: document.getElementById('input-bg-upload'),
+      btnResetBg: document.getElementById('btn-reset-bg'),
+      inputFont: document.getElementById('input-font'),
+      inputFontSize: document.getElementById('input-font-size'),
+      valFontSize: document.getElementById('val-font-size'),
+      inputLetterSpacing: document.getElementById('input-letter-spacing'),
+      valLetterSpacing: document.getElementById('val-letter-spacing'),
+      inputShowBox: document.getElementById('input-show-box'),
+      btnResetPos: document.getElementById('btn-reset-pos'),
+      inputBoxY: document.getElementById('input-box-y'),
+      valBoxY: document.getElementById('val-box-y'),
+      inputBoxW: document.getElementById('input-box-w'),
+      valBoxW: document.getElementById('val-box-w'),
+      inputBoxH: document.getElementById('input-box-h'),
+      valBoxH: document.getElementById('val-box-h'),
+      inputTextColor: document.getElementById('input-text-color'),
+      valTextColor: document.getElementById('val-text-color'),
+
+      previewCanvas: document.getElementById('preview-canvas'),
+      previewDimBadge: document.getElementById('preview-dim-badge'),
+      tipDim: document.getElementById('tip-dim'),
+      btnPrevCard: document.getElementById('btn-prev-card'),
+      btnNextCard: document.getElementById('btn-next-card'),
+      inputPreviewIndex: document.getElementById('input-preview-index'),
+      previewTotalLabel: document.getElementById('preview-total-label'),
+
+      btnDownloadTemplate: document.getElementById('btn-download-template'),
+      btnPrint: document.getElementById('btn-print'),
+      btnExportPdf: document.getElementById('btn-export-pdf'),
+      exportModal: document.getElementById('export-modal'),
+      exportStatusText: document.getElementById('export-status-text'),
+      exportProgressBar: document.getElementById('export-progress-bar'),
+      printArea: document.getElementById('print-area')
+    };
+
+    // =========================================================================
+    // Helper: Generate Number List from State
+    // =========================================================================
+    function getCardLabels() {
+      if (state.mode === 'range') {
+        const start = Math.max(0, parseInt(state.start, 10) || 0);
+        const end = Math.max(start, Math.min(9999, parseInt(state.end, 10) || start));
+        const pad = parseInt(state.pad, 10) || 3;
+        const prefix = state.prefix || '';
+        const list = [];
+        for (let i = start; i <= end; i++) {
+          list.push(prefix + String(i).padStart(pad, '0'));
+        }
+        return list.length ? list : ['001'];
+      } else {
+        const raw = state.customRaw || '';
+        const tokens = raw.split(/[\n,]+/).map(t => t.trim()).filter(Boolean);
+        const list = [];
+        for (const tok of tokens) {
+          // Support inline range like 001-010
+          const rangeMatch = tok.match(/^(\d+)-(\d+)$/);
+          if (rangeMatch) {
+            const a = parseInt(rangeMatch[1], 10);
+            const b = parseInt(rangeMatch[2], 10);
+            const padLen = rangeMatch[1].length;
+            if (b >= a && (b - a) <= 2000) {
+              for (let n = a; n <= b; n++) {
+                list.push(String(n).padStart(padLen, '0'));
+              }
+              continue;
+            }
+          }
+          list.push(tok);
+        }
+        return list.length ? list : ['085'];
+      }
+    }
+
+    // =========================================================================
+    // High-Resolution Artwork Renderer (Matches 5T TCG Reference Design)
+    // =========================================================================
+    function renderBuiltInBackground(widthPx, heightPx) {
+      const sig = `${widthPx}x${heightPx}-${state.customBgImage ? 'custom' : '5t'}`;
+      if (cachedBgCanvas && cachedBgSignature === sig) {
+        return cachedBgCanvas;
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = widthPx;
+      canvas.height = heightPx;
+      const ctx = canvas.getContext('2d');
+
+      // If user uploaded their own background artwork, draw it scaled to fill
+      if (state.customBgImage) {
+        ctx.drawImage(state.customBgImage, 0, 0, widthPx, heightPx);
+        cachedBgCanvas = canvas;
+        cachedBgSignature = sig;
+        return canvas;
+      }
+
+      // 1. Deep Obsidian Black Base
+      ctx.fillStyle = '#07060a';
+      ctx.fillRect(0, 0, widthPx, heightPx);
+
+      // 2. Subtle Smoky Marble / Energy Texture Waves
+      ctx.save();
+      // Top-right golden-orange & purple aura
+      const gTopRight = ctx.createRadialGradient(
+        widthPx * 0.85, heightPx * 0.12, widthPx * 0.02,
+        widthPx * 0.75, heightPx * 0.15, widthPx * 0.75
+      );
+      gTopRight.addColorStop(0, 'rgba(255, 175, 45, 0.72)');
+      gTopRight.addColorStop(0.28, 'rgba(234, 88, 12, 0.45)');
+      gTopRight.addColorStop(0.6, 'rgba(126, 34, 206, 0.32)');
+      gTopRight.addColorStop(1, 'rgba(7, 6, 10, 0)');
+      ctx.fillStyle = gTopRight;
+      ctx.fillRect(0, 0, widthPx, heightPx);
+
+      // Bottom-left vivid purple & gold energy aura
+      const gBotLeft = ctx.createRadialGradient(
+        widthPx * 0.15, heightPx * 0.90, widthPx * 0.02,
+        widthPx * 0.25, heightPx * 0.85, widthPx * 0.75
+      );
+      gBotLeft.addColorStop(0, 'rgba(168, 85, 247, 0.85)');
+      gBotLeft.addColorStop(0.32, 'rgba(107, 33, 168, 0.50)');
+      gBotLeft.addColorStop(0.65, 'rgba(217, 119, 6, 0.25)');
+      gBotLeft.addColorStop(1, 'rgba(7, 6, 10, 0)');
+      ctx.fillStyle = gBotLeft;
+      ctx.fillRect(0, 0, widthPx, heightPx);
+
+      // Bottom-right golden streak
+      const gBotRight = ctx.createRadialGradient(
+        widthPx * 0.88, heightPx * 0.88, widthPx * 0.01,
+        widthPx * 0.82, heightPx * 0.85, widthPx * 0.55
+      );
+      gBotRight.addColorStop(0, 'rgba(245, 158, 11, 0.65)');
+      gBotRight.addColorStop(0.45, 'rgba(147, 51, 234, 0.30)');
+      gBotRight.addColorStop(1, 'rgba(7, 6, 10, 0)');
+      ctx.fillStyle = gBotRight;
+      ctx.fillRect(0, 0, widthPx, heightPx);
+
+      // Flowing Silk / Flame Ribbons (Bezier light trails matching reference image)
+      const drawRibbon = (y1, cp1y, cp2y, y2, color1, color2, lineW) => {
+        const grad = ctx.createLinearGradient(0, y1, widthPx, y2);
+        grad.addColorStop(0, color1);
+        grad.addColorStop(0.5, color2);
+        grad.addColorStop(1, color1);
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = lineW;
+        ctx.beginPath();
+        ctx.moveTo(-widthPx * 0.05, y1);
+        ctx.bezierCurveTo(widthPx * 0.35, cp1y, widthPx * 0.65, cp2y, widthPx * 1.05, y2);
+        ctx.stroke();
+      };
+
+      ctx.globalCompositeOperation = 'screen';
+      drawRibbon(heightPx * 0.16, heightPx * 0.04, heightPx * 0.22, heightPx * 0.06, 'rgba(147,51,234,0)', 'rgba(251,146,60,0.85)', widthPx * 0.014);
+      drawRibbon(heightPx * 0.20, heightPx * 0.08, heightPx * 0.25, heightPx * 0.10, 'rgba(168,85,247,0)', 'rgba(192,132,252,0.55)', widthPx * 0.025);
+      drawRibbon(heightPx * 0.72, heightPx * 0.88, heightPx * 0.78, heightPx * 0.94, 'rgba(245,158,11,0)', 'rgba(251,146,60,0.85)', widthPx * 0.014);
+      drawRibbon(heightPx * 0.78, heightPx * 0.94, heightPx * 0.82, heightPx * 0.98, 'rgba(168,85,247,0)', 'rgba(168,85,247,0.75)', widthPx * 0.028);
+      ctx.restore();
+
+      // 3. Subtle Compass Rose Watermark behind bottom logo
+      const cx = widthPx * 0.5;
+      const cy = heightPx * 0.77;
+      const compR = widthPx * 0.22;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.07)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+      ctx.lineWidth = widthPx * 0.003;
+
+      // Outer compass rings
+      ctx.beginPath(); ctx.arc(0, 0, compR, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.arc(0, 0, compR * 0.78, 0, Math.PI * 2); ctx.stroke();
+
+      // 8-point star spikes
+      for (let i = 0; i < 8; i++) {
+        ctx.save();
+        ctx.rotate((i * Math.PI) / 4);
+        const len = i % 2 === 0 ? compR * 1.25 : compR * 0.85;
+        const wid = i % 2 === 0 ? compR * 0.11 : compR * 0.07;
+        ctx.beginPath();
+        ctx.moveTo(0, -len);
+        ctx.lineTo(wid, 0);
+        ctx.lineTo(0, len * 0.15);
+        ctx.lineTo(-wid, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
+      ctx.restore();
+
+      // 4. Metallic Gold & Crystal Purple "5T TCG" Emblem at Bottom Center
+      draw5TTCGLogo(ctx, cx, heightPx * 0.765, widthPx * 0.34);
+
+      // 5. Dual Gold & Neon-Purple Rounded Border Frame
+      const margin = widthPx * 0.032;
+      const radius = widthPx * 0.045;
+      const bw = widthPx - margin * 2;
+      const bh = heightPx - margin * 2;
+
+      // Outer Gold Gradient Stroke
+      const borderGrad = ctx.createLinearGradient(0, 0, widthPx, heightPx);
+      borderGrad.addColorStop(0, '#fcd34d');
+      borderGrad.addColorStop(0.25, '#d97706');
+      borderGrad.addColorStop(0.5, '#a855f7');
+      borderGrad.addColorStop(0.75, '#f59e0b');
+      borderGrad.addColorStop(1, '#fde68a');
+
+      ctx.save();
+      ctx.strokeStyle = borderGrad;
+      ctx.lineWidth = widthPx * 0.0065;
+      roundRectPath(ctx, margin, margin, bw, bh, radius);
+      ctx.stroke();
+
+      // Inner subtle purple hairline
+      const inset = margin + widthPx * 0.011;
+      ctx.strokeStyle = 'rgba(192, 132, 252, 0.45)';
+      ctx.lineWidth = widthPx * 0.0022;
+      roundRectPath(ctx, inset, inset, widthPx - inset * 2, heightPx - inset * 2, radius * 0.8);
+      ctx.stroke();
+      ctx.restore();
+
+      cachedBgCanvas = canvas;
+      cachedBgSignature = sig;
+      return canvas;
+    }
+
+    // Draw the stylized "5T TCG" metallic gold & crystal purple emblem
+    function draw5TTCGLogo(ctx, centerX, centerY, logoWidth) {
+      ctx.save();
+      ctx.translate(centerX, centerY);
+
+      const scale = logoWidth / 260;
+      ctx.scale(scale, scale);
+
+      // Shadow behind logo
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 14;
+      ctx.shadowOffsetY = 5;
+
+      // Stylized "5" in Metallic Gold
+      ctx.save();
+      ctx.transform(1, 0, -0.22, 1, -18, 0); // Italic slant
+      const goldGrad = ctx.createLinearGradient(-70, -55, -10, 35);
+      goldGrad.addColorStop(0, '#fef08a');
+      goldGrad.addColorStop(0.35, '#f59e0b');
+      goldGrad.addColorStop(0.7, '#b45309');
+      goldGrad.addColorStop(1, '#fde047');
+
+      ctx.font = '900 94px "Inter", "Arial Black", sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 4;
+      ctx.strokeStyle = '#451a03';
+      ctx.strokeText('5', 4, 0);
+      ctx.fillStyle = goldGrad;
+      ctx.fillText('5', 4, 0);
+      ctx.restore();
+
+      // Stylized Crystal Cross "T" in Neon Purple
+      ctx.save();
+      ctx.transform(1, 0, -0.22, 1, 22, -6);
+      const purpleGrad = ctx.createLinearGradient(0, -60, 40, 45);
+      purpleGrad.addColorStop(0, '#f3e8ff');
+      purpleGrad.addColorStop(0.3, '#c084fc');
+      purpleGrad.addColorStop(0.65, '#7e22ce');
+      purpleGrad.addColorStop(1, '#3b0764');
+
+      // Crossbar of T (faceted crystal look)
+      ctx.fillStyle = purpleGrad;
+      ctx.strokeStyle = '#e9d5ff';
+      ctx.lineWidth = 2;
+
+      ctx.beginPath();
+      ctx.moveTo(-36, -42);
+      ctx.lineTo(44, -42);
+      ctx.lineTo(36, -24);
+      ctx.lineTo(-44, -24);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Vertical stem of T
+      ctx.beginPath();
+      ctx.moveTo(-11, -56);
+      ctx.lineTo(13, -56);
+      ctx.lineTo(11, 44);
+      ctx.lineTo(-2, 54);
+      ctx.lineTo(-13, 44);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+
+      // "TCG" silver/white italic subtitle underneath
+      ctx.save();
+      ctx.transform(1, 0, -0.22, 1, 0, 52);
+      const silverGrad = ctx.createLinearGradient(0, -14, 0, 14);
+      silverGrad.addColorStop(0, '#ffffff');
+      silverGrad.addColorStop(0.55, '#cbd5e1');
+      silverGrad.addColorStop(1, '#64748b');
+
+      ctx.font = '900 28px "Inter", "Arial Black", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#09090b';
+      ctx.strokeText('TCG', 0, 0);
+      ctx.fillStyle = silverGrad;
+      ctx.fillText('TCG', 0, 0);
+      ctx.restore();
+
+      ctx.restore();
+    }
+
+    function roundRectPath(ctx, x, y, w, h, r) {
+      const radius = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.arcTo(x + w, y, x + w, y + h, radius);
+      ctx.arcTo(x + w, y + h, x, y + h, radius);
+      ctx.arcTo(x, y + h, x, y, radius);
+      ctx.arcTo(x, y, x + w, y, radius);
+      ctx.closePath();
+    }
+
+    // =========================================================================
+    // Render a Complete Single Card onto Target Canvas
+    // =========================================================================
+    function renderCardToCanvas(targetCanvas, labelText, widthPx, heightPx) {
+      targetCanvas.width = widthPx;
+      targetCanvas.height = heightPx;
+      const ctx = targetCanvas.getContext('2d');
+
+      // 1. Draw Background Layer
+      const bg = renderBuiltInBackground(widthPx, heightPx);
+      ctx.drawImage(bg, 0, 0, widthPx, heightPx);
+
+      // 2. White Rounded Number Window Box
+      const boxW = widthPx * (state.boxWPct / 100);
+      const boxH = heightPx * (state.boxHPct / 100);
+      const boxX = (widthPx - boxW) / 2;
+      const boxY = heightPx * (state.boxYPct / 100) - boxH / 2;
+      const boxRadius = Math.min(boxW, boxH) * 0.095;
+
+      if (state.showBox) {
+        ctx.save();
+        ctx.fillStyle = '#f8fafc';
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+        ctx.shadowBlur = widthPx * 0.02;
+        ctx.shadowOffsetY = heightPx * 0.005;
+        roundRectPath(ctx, boxX, boxY, boxW, boxH, boxRadius);
+        ctx.fill();
+        ctx.restore();
+      }
+
+      // 3. Render Number / Label Text inside the Window Box
+      if (labelText !== null && labelText !== undefined) {
+        ctx.save();
+        // Base font size proportional to card height (~60pt on 88mm card -> ~24.5% of card height)
+        let fontSizePx = heightPx * 0.238 * (state.fontSizePct / 100);
+
+        // Auto-shrink slightly if user enters long custom text like "VIP-001"
+        if (labelText.length > 3) {
+          fontSizePx *= Math.max(0.45, 3.2 / labelText.length);
+        }
+
+        const weight = state.fontFamily === 'Arial Black' ? '900' : '800';
+        ctx.font = `${weight} ${Math.round(fontSizePx)}px "${state.fontFamily}", sans-serif`;
+        ctx.fillStyle = state.textColor;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const centerX = widthPx / 2;
+        const centerY = boxY + boxH / 2 + fontSizePx * 0.04; // Optical vertical centering
+
+        // Apply letter spacing if supported or manual kerning
+        const trackingPx = (state.letterSpacing / 265) * widthPx;
+        if ('letterSpacing' in ctx) {
+          ctx.letterSpacing = `${trackingPx}px`;
+          ctx.fillText(labelText, centerX, centerY);
+        } else {
+          drawTextWithSpacing(ctx, labelText, centerX, centerY, trackingPx);
+        }
+        ctx.restore();
+      }
+    }
+
+    function drawTextWithSpacing(ctx, text, centerX, centerY, spacing) {
+      const chars = Array.from(text);
+      const widths = chars.map(c => ctx.measureText(c).width);
+      const totalWidth = widths.reduce((a, b) => a + b, 0) + spacing * (chars.length - 1);
+      let cursorX = centerX - totalWidth / 2;
+      for (let i = 0; i < chars.length; i++) {
+        ctx.fillText(chars[i], cursorX + widths[i] / 2, centerY);
+        cursorX += widths[i] + spacing;
+      }
+    }
+
+    // =========================================================================
+    // UI Update & Live Preview Sync
+    // =========================================================================
+    function updateAll() {
+      const labels = getCardLabels();
+      const total = labels.length;
+
+      // Clamp preview index
+      if (state.previewIndex >= total) state.previewIndex = total - 1;
+      if (state.previewIndex < 0) state.previewIndex = 0;
+
+      // Update badges & summaries
+      el.summaryCount.textContent = total.toLocaleString();
+      el.badgeTotalCards.textContent = total.toLocaleString();
+      el.previewTotalLabel.textContent = total.toLocaleString();
+      el.inputPreviewIndex.max = total;
+      el.inputPreviewIndex.value = state.previewIndex + 1;
+
+      if (total <= 5) {
+        el.summarySample.textContent = labels.join(', ');
+      } else {
+        el.summarySample.textContent = `${labels[0]}, ${labels[1]}, ${labels[2]} ... ${labels[total - 1]}`;
+      }
+
+      // Dimensions & Layout calculation
+      el.previewDimBadge.textContent = `${state.cardWidthMm} × ${state.cardHeightMm} mm`;
+      el.tipDim.textContent = `${state.cardWidthMm} × ${state.cardHeightMm}`;
+
+      if (state.pageFormat === 'single') {
+        el.layoutInfo.textContent = `1 ใบต่อ 1 หน้า (${state.cardWidthMm}×${state.cardHeightMm} มม.) • รวม ${total} หน้า`;
+      } else {
+        const pageW = state.pageFormat === 'a4' ? 210 : 215.9;
+        const pageH = state.pageFormat === 'a4' ? 297 : 279.4;
+        const cols = Math.max(1, Math.floor((pageW - 10 + state.gapMm) / (state.cardWidthMm + state.gapMm)));
+        const rows = Math.max(1, Math.floor((pageH - 10 + state.gapMm) / (state.cardHeightMm + state.gapMm)));
+        const perPage = cols * rows;
+        const totalPages = Math.ceil(total / perPage);
+        el.layoutInfo.textContent = `จัดเรียง ${cols}×${rows} (${perPage} ใบ/หน้า) • รวม ${totalPages} หน้า ${state.pageFormat.toUpperCase()}`;
+      }
+
+      // Update slider value labels
+      el.valFontSize.textContent = `${state.fontSizePct}%`;
+      el.valLetterSpacing.textContent = `${state.letterSpacing} px`;
+      el.valBoxY.textContent = `${state.boxYPct}%`;
+      el.valBoxW.textContent = `${state.boxWPct}%`;
+      el.valBoxH.textContent = `${state.boxHPct}%`;
+      el.valTextColor.textContent = state.textColor.toUpperCase();
+
+      // Render Live Preview Canvas (at crisp 2x screen resolution)
+      const aspect = state.cardHeightMm / state.cardWidthMm;
+      const previewW = 540;
+      const previewH = Math.round(previewW * aspect);
+      const currentLabel = labels[state.previewIndex] || '085';
+      renderCardToCanvas(el.previewCanvas, currentLabel, previewW, previewH);
+    }
+
+    // =========================================================================
+    // Event Listeners
+    // =========================================================================
+    // Mode Tabs
+    el.tabRange.addEventListener('click', () => {
+      state.mode = 'range';
+      el.tabRange.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-amber-400 shadow transition';
+      el.tabCustom.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition';
+      el.panelRange.classList.remove('hidden');
+      el.panelCustom.classList.add('hidden');
+      state.previewIndex = Math.min(84, getCardLabels().length - 1);
+      updateAll();
+    });
+
+    el.tabCustom.addEventListener('click', () => {
+      state.mode = 'custom';
+      el.tabCustom.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 text-amber-400 shadow transition';
+      el.tabRange.className = 'px-3 py-1.5 rounded-lg text-xs font-semibold text-zinc-400 hover:text-white transition';
+      el.panelCustom.classList.remove('hidden');
+      el.panelRange.classList.add('hidden');
+      state.previewIndex = 0;
+      updateAll();
+    });
+
+    // Range & Custom Inputs
+    el.inputStart.addEventListener('input', e => { state.start = e.target.value; updateAll(); });
+    el.inputEnd.addEventListener('input', e => { state.end = e.target.value; updateAll(); });
+    el.inputPad.addEventListener('change', e => { state.pad = e.target.value; updateAll(); });
+    el.inputPrefix.addEventListener('input', e => { state.prefix = e.target.value; updateAll(); });
+    el.inputCustomList.addEventListener('input', e => { state.customRaw = e.target.value; updateAll(); });
+    el.btnSampleCustom.addEventListener('click', () => {
+      el.inputCustomList.value = '001, 008, 085, 099, 100-105, VIP-01, GRAND-PRIZE';
+      state.customRaw = el.inputCustomList.value;
+      updateAll();
+    });
+
+    // Dimensions & Layout Inputs
+    document.querySelectorAll('.preset-size').forEach(btn => {
+      btn.addEventListener('click', () => {
+        state.cardWidthMm = parseFloat(btn.dataset.w);
+        state.cardHeightMm = parseFloat(btn.dataset.h);
+        el.inputWidth.value = state.cardWidthMm;
+        el.inputHeight.value = state.cardHeightMm;
+        cachedBgCanvas = null; // Force crisp redraw at new aspect ratio
+        updateAll();
+      });
+    });
+
+    el.inputWidth.addEventListener('input', e => {
+      const v = parseFloat(e.target.value);
+      if (v >= 15 && v <= 210) { state.cardWidthMm = v; cachedBgCanvas = null; updateAll(); }
+    });
+    el.inputHeight.addEventListener('input', e => {
+      const v = parseFloat(e.target.value);
+      if (v >= 15 && v <= 297) { state.cardHeightMm = v; cachedBgCanvas = null; updateAll(); }
+    });
+    el.inputPageFormat.addEventListener('change', e => { state.pageFormat = e.target.value; updateAll(); });
+    el.inputGap.addEventListener('input', e => { state.gapMm = Math.max(0, parseFloat(e.target.value) || 0); updateAll(); });
+    el.inputCropMarks.addEventListener('change', e => { state.cropMarks = e.target.checked; });
+
+    // Background Upload & Reset
+    el.inputBgUpload.addEventListener('change', e => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const img = new Image();
+        img.onload = () => {
+          state.customBgImage = img;
+          cachedBgCanvas = null;
+          el.btnResetBg.classList.remove('hidden');
+          updateAll();
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    el.btnResetBg.addEventListener('click', () => {
+      state.customBgImage = null;
+      cachedBgCanvas = null;
+      el.inputBgUpload.value = '';
+      el.btnResetBg.classList.add('hidden');
+      updateAll();
+    });
+
+    // Typography & Box Controls
+    el.inputFont.addEventListener('change', e => { state.fontFamily = e.target.value; updateAll(); });
+    el.inputFontSize.addEventListener('input', e => { state.fontSizePct = parseInt(e.target.value, 10); updateAll(); });
+    el.inputLetterSpacing.addEventListener('input', e => { state.letterSpacing = parseInt(e.target.value, 10); updateAll(); });
+    el.inputShowBox.addEventListener('change', e => { state.showBox = e.target.checked; updateAll(); });
+    el.inputBoxY.addEventListener('input', e => { state.boxYPct = parseInt(e.target.value, 10); updateAll(); });
+    el.inputBoxW.addEventListener('input', e => { state.boxWPct = parseInt(e.target.value, 10); updateAll(); });
+    el.inputBoxH.addEventListener('input', e => { state.boxHPct = parseInt(e.target.value, 10); updateAll(); });
+    el.inputTextColor.addEventListener('input', e => { state.textColor = e.target.value; updateAll(); });
+
+    el.btnResetPos.addEventListener('click', () => {
+      state.boxYPct = 38;
+      state.boxWPct = 83;
+      state.boxHPct = 34;
+      state.fontSizePct = 100;
+      state.letterSpacing = 2;
+      state.textColor = '#09090b';
+      state.showBox = true;
+      el.inputBoxY.value = 38;
+      el.inputBoxW.value = 83;
+      el.inputBoxH.value = 34;
+      el.inputFontSize.value = 100;
+      el.inputLetterSpacing.value = 2;
+      el.inputTextColor.value = '#09090b';
+      el.inputShowBox.checked = true;
+      updateAll();
+    });
+
+    // Preview Navigation
+    el.btnPrevCard.addEventListener('click', () => {
+      const total = getCardLabels().length;
+      state.previewIndex = (state.previewIndex - 1 + total) % total;
+      updateAll();
+    });
+    el.btnNextCard.addEventListener('click', () => {
+      const total = getCardLabels().length;
+      state.previewIndex = (state.previewIndex + 1) % total;
+      updateAll();
+    });
+    el.inputPreviewIndex.addEventListener('input', e => {
+      const val = parseInt(e.target.value, 10);
+      if (!isNaN(val)) {
+        state.previewIndex = val - 1;
+        updateAll();
+      }
+    });
+
+    // =========================================================================
+    // Download Blank Template PNG (Without Number)
+    // =========================================================================
+    el.btnDownloadTemplate.addEventListener('click', () => {
+      const wPx = Math.round(state.cardWidthMm * MM_TO_INCH * BASE_DPI);
+      const hPx = Math.round(state.cardHeightMm * MM_TO_INCH * BASE_DPI);
+      const tempCanvas = document.createElement('canvas');
+      renderCardToCanvas(tempCanvas, null, wPx, hPx);
+
+      const link = document.createElement('a');
+      link.download = `5T-TCG-Template-${state.cardWidthMm}x${state.cardHeightMm}mm.png`;
+      link.href = tempCanvas.toDataURL('image/png');
+      link.click();
+    });
+
+    // =========================================================================
+    // High-DPI Direct PDF Exporter (using jsPDF)
+    // =========================================================================
+    el.btnExportPdf.addEventListener('click', async () => {
+      const labels = getCardLabels();
+      const total = labels.length;
+
+      el.exportModal.classList.remove('hidden');
+      el.exportModal.classList.add('flex');
+      el.exportProgressBar.style.width = '2%';
+      el.exportStatusText.textContent = `กำลังเตรียมเรนเดอร์การ์ด 0 / ${total} ใบ...`;
+
+      // Yield to browser to paint modal
+      await new Promise(r => setTimeout(r, 40));
+
+      try {
+        const { jsPDF } = window.jspdf;
+        const cardW = state.cardWidthMm;
+        const cardH = state.cardHeightMm;
+
+        // Calculate 300 DPI pixel dimensions for crisp print quality
+        const wPx = Math.round(cardW * MM_TO_INCH * BASE_DPI);
+        const hPx = Math.round(cardH * MM_TO_INCH * BASE_DPI);
+        const workCanvas = document.createElement('canvas');
+
+        let doc;
+        let cols = 1, rows = 1, perPage = 1, startX = 0, startY = 0;
+
+        if (state.pageFormat === 'single') {
+          const orientation = cardW > cardH ? 'l' : 'p';
+          doc = new jsPDF({ orientation, unit: 'mm', format: [cardW, cardH], compress: true });
+        } else {
+          doc = new jsPDF({ orientation: 'p', unit: 'mm', format: state.pageFormat, compress: true });
+          const pageW = doc.internal.pageSize.getWidth();
+          const pageH = doc.internal.pageSize.getHeight();
+          const gap = state.gapMm;
+
+          cols = Math.max(1, Math.floor((pageW - 10 + gap) / (cardW + gap)));
+          rows = Math.max(1, Math.floor((pageH - 10 + gap) / (cardH + gap)));
+          perPage = cols * rows;
+
+          const gridW = cols * cardW + (cols - 1) * gap;
+          const gridH = rows * cardH + (rows - 1) * gap;
+          startX = (pageW - gridW) / 2;
+          startY = (pageH - gridH) / 2;
+        }
+
+        // Batch loop with periodic UI yielding so browser never freezes even on 500+ cards
+        for (let i = 0; i < total; i++) {
+          if (i > 0 && i % perPage === 0) {
+            doc.addPage();
+          }
+
+          renderCardToCanvas(workCanvas, labels[i], wPx, hPx);
+          // JPEG 0.94 gives ultra-crisp print quality while keeping 500-card PDF size compact
+          const imgData = workCanvas.toDataURL('image/jpeg', 0.94);
+
+          if (state.pageFormat === 'single') {
+            doc.addImage(imgData, 'JPEG', 0, 0, cardW, cardH, undefined, 'FAST');
+          } else {
+            const idxOnPage = i % perPage;
+            const r = Math.floor(idxOnPage / cols);
+            const c = idxOnPage % cols;
+            const x = startX + c * (cardW + state.gapMm);
+            const y = startY + r * (cardH + state.gapMm);
+
+            doc.addImage(imgData, 'JPEG', x, y, cardW, cardH, undefined, 'FAST');
+
+            // Draw dashed cut guides around each card
+            if (state.cropMarks) {
+              doc.setDrawColor(160, 160, 160);
+              doc.setLineWidth(0.2);
+              doc.setLineDashPattern([1.2, 1.2], 0);
+              doc.rect(x, y, cardW, cardH);
+              doc.setLineDashPattern([], 0);
+            }
+          }
+
+          // Update progress every 10 cards
+          if (i % 10 === 0 || i === total - 1) {
+            const pct = Math.round(((i + 1) / total) * 100);
+            el.exportProgressBar.style.width = `${pct}%`;
+            el.exportStatusText.textContent = `กำลังเรนเดอร์การ์ด ${i + 1} / ${total} ใบ (${pct}%)...`;
+            await new Promise(r => setTimeout(r, 0));
+          }
+        }
+
+        el.exportStatusText.textContent = 'กำลังบันทึกไฟล์ PDF...';
+        await new Promise(r => setTimeout(r, 20));
+
+        const firstLabel = labels[0] || '001';
+        const lastLabel = labels[total - 1] || '500';
+        doc.save(`5T-TCG-Cards-${firstLabel}-to-${lastLabel}-${cardW}x${cardH}mm.pdf`);
+      } catch (err) {
+        console.error('PDF Export Error:', err);
+        el.exportStatusText.textContent = 'เกิดข้อผิดพลาดในการสร้าง PDF กรุณาลองใหม่อีกครั้ง';
+        await new Promise(r => setTimeout(r, 1500));
+      } finally {
+        el.exportModal.classList.add('hidden');
+        el.exportModal.classList.remove('flex');
+      }
+    });
+
+    // =========================================================================
+    // Direct Browser Print Handler
+    // =========================================================================
+    el.btnPrint.addEventListener('click', () => {
+      const labels = getCardLabels();
+      const cardW = state.cardWidthMm;
+      const cardH = state.cardHeightMm;
+      const wPx = Math.round(cardW * MM_TO_INCH * 200);
+      const hPx = Math.round(cardH * MM_TO_INCH * 200);
+      const workCanvas = document.createElement('canvas');
+
+      el.printArea.innerHTML = '';
+
+      const pageW = state.pageFormat === 'letter' ? 215.9 : 210;
+      const pageH = state.pageFormat === 'letter' ? 279.4 : 297;
+      const cols = state.pageFormat === 'single' ? 1 : Math.max(1, Math.floor((pageW - 10 + state.gapMm) / (cardW + state.gapMm)));
+      const rows = state.pageFormat === 'single' ? 1 : Math.max(1, Math.floor((pageH - 10 + state.gapMm) / (cardH + state.gapMm)));
+      const perPage = cols * rows;
+
+      let currentPageDiv = null;
+      labels.forEach((lbl, idx) => {
+        if (idx % perPage === 0) {
+          currentPageDiv = document.createElement('div');
+          currentPageDiv.className = 'print-page';
+          currentPageDiv.style.width = state.pageFormat === 'single' ? `${cardW}mm` : `${pageW}mm`;
+          currentPageDiv.style.height = state.pageFormat === 'single' ? `${cardH}mm` : `${pageH}mm`;
+          currentPageDiv.style.gap = state.pageFormat === 'single' ? '0' : `${state.gapMm}mm`;
+          el.printArea.appendChild(currentPageDiv);
+        }
+
+        renderCardToCanvas(workCanvas, lbl, wPx, hPx);
+        const img = document.createElement('img');
+        img.src = workCanvas.toDataURL('image/jpeg', 0.92);
+        img.className = 'print-card-img';
+        img.style.width = `${cardW}mm`;
+        img.style.height = `${cardH}mm`;
+        if (state.cropMarks && state.pageFormat !== 'single') {
+          img.style.border = '0.25mm dashed #94a3b8';
+        }
+        currentPageDiv.appendChild(img);
+      });
+
+      window.print();
+    });
+
+    // Initialize once fonts are loaded
+    document.fonts.ready.then(() => {
+      updateAll();
+    });
+    updateAll();
+  </script>
+</body>
+</html>
